@@ -102,6 +102,37 @@ static size_t parse_args(arg_buf *arg_bug_msg) {
 }
 
 //
+// 加载elf文件的section
+//
+uint8 tmp[1000];
+elf_Sym Symbol_tmp[256];
+uint64 Symbol_num = 0, str_len = 0;
+elf_status elf_load_section(elf_ctx *ctx, process* p){
+  // sprint("!!%d",ctx->ehdr.shstrndx);
+  elf_section_header sh_addr;
+  int i, off;
+  for(i = 0, off = ctx->ehdr.shoff; i < ctx->ehdr.shnum; i++, off+= sizeof(sh_addr)) {
+    if (elf_fpread(ctx, (void *)&sh_addr, sizeof(sh_addr), off) != sizeof(sh_addr)) return EL_EIO;
+    // sprint("!%d\n",sh_addr.sh_type);
+    if(sh_addr.sh_type == SHT_STRTAB){
+      // sprint("%d %d\n",sh_addr.sh_size,sh_addr.sh_offset);
+      if(elf_fpread(ctx, (void *)tmp+str_len, sh_addr.sh_size, sh_addr.sh_offset) != sh_addr.sh_size) return EL_EIO;
+      // sprint("??%s\n",tmp);
+      str_len += sh_addr.sh_size;
+    }
+    else if(sh_addr.sh_type == SHT_SYMTAB){
+      if(elf_fpread(ctx, (void *)Symbol_tmp, sh_addr.sh_size, sh_addr.sh_offset) != sh_addr.sh_size) return EL_EIO;
+      Symbol_num += sh_addr.sh_size / sizeof(elf_Sym);
+    }
+  }
+  p ->str = tmp;
+  p ->str_len = str_len;
+  p ->Symbols = Symbol_tmp;
+  p ->Symbol_num = Symbol_num;
+  return EL_OK;
+}
+
+//
 // load the elf of user application, by using the spike file interface.
 //
 void load_bincode_from_host_elf(process *p) {
@@ -129,6 +160,8 @@ void load_bincode_from_host_elf(process *p) {
 
   // load elf. elf_load() is defined above.
   if (elf_load(&elfloader) != EL_OK) panic("Fail on loading elf.\n");
+
+  if (elf_load_section(&elfloader, p) != EL_OK)  panic("Fail on loading elf section.\n");
 
   // entry (virtual, also physical in lab1_x) address
   p->trapframe->epc = elfloader.ehdr.entry;

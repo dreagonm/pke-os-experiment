@@ -6,10 +6,10 @@
 #include "user_lib.h"
 #include "util/types.h"
 
-void f8() { print_backtrace(7); }
+void f8() { print_backtrace(8); }
 void f7() { f8(); }
 void f6() { f7(); }
-void f5() { f6(); }
+void f5() { int64 x=0,y=1;f6(); }
 void f4() { f5(); }
 void f3() { f4(); }
 void f2() { f3(); }

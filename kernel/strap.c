@@ -59,9 +59,16 @@ void handle_user_page_fault(uint64 mcause, uint64 sepc, uint64 stval) {
       // dynamically increase application stack.
       // hint: first allocate a new physical page, and then, maps the new page to the
       // virtual address that causes the page fault.
-      // TODO 这里默认逻辑地址合法
-      user_vm_map((pagetable_t)current->pagetable, stval&~((1<<PGSHIFT)-1) , PGSIZE,(uint64_t)alloc_page(),
-       prot_to_type(PROT_WRITE | PROT_READ, 1));
+      // sprint("%0x %0x\n",stval,current->trapframe->regs.sp);
+      if(stval > current->trapframe->regs.sp){
+        user_vm_map((pagetable_t)current->pagetable, stval&~((1<<PGSHIFT)-1) , PGSIZE,(uint64_t)alloc_page(),
+        prot_to_type(PROT_WRITE | PROT_READ, 1));
+      }
+      else{
+        sprint("visit address(0x%0x)\n",stval);
+        panic( "this address is not available!" );
+        break;
+      }
       // panic( "You need to implement the operations that actually handle the page fault in lab2_3.\n" );
       break;
     default:

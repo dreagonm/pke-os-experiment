@@ -105,5 +105,13 @@ int do_fork(process* parent);
 
 // current running process
 extern process* current;
+extern process procs[NPROC];
+
+typedef struct semaphore_t{
+  int value,used;
+  process *wait_head, *wait_tail;
+}semaphore;
+
+extern semaphore sems[NPROC];
 
 #endif

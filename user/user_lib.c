@@ -9,6 +9,7 @@
 #include "util/types.h"
 #include "util/snprintf.h"
 #include "kernel/syscall.h"
+#include "kernel/process.h"
 
 uint64 do_user_call(uint64 sysnum, uint64 a1, uint64 a2, uint64 a3, uint64 a4, uint64 a5, uint64 a6,
                  uint64 a7) {
@@ -75,4 +76,26 @@ int fork() {
 //
 void yield() {
   do_user_call(SYS_user_yield, 0, 0, 0, 0, 0, 0, 0);
+}
+
+#define CONTINUE_WAIT -2
+
+void wait(int pid){
+  while(1){
+    if(do_user_call(SYS_user_wait, pid, 0, 0, 0, 0, 0, 0) != CONTINUE_WAIT)
+      break;
+    yield();
+  }
+}
+
+int sem_new(int value){
+  return do_user_call(SYS_user_sem_new,value,0,0,0,0,0,0);
+}
+
+void sem_V(int sem){
+  do_user_call(SYS_user_sem_v,sem,0,0,0,0,0,0);
+}
+
+void sem_P(int sem){
+  do_user_call(SYS_user_sem_p,sem,0,0,0,0,0,0);  
 }

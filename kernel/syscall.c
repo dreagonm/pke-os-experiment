@@ -89,15 +89,99 @@ ssize_t sys_user_yield() {
   // hint: the functionality of yield is to give up the processor. therefore,
   // we should set the status of currently running process to READY, insert it in
   // the rear of ready queue, and finally, schedule a READY process to run.
-  panic( "You need to implement the yield syscall in lab3_2.\n" );
+  current -> status = READY;
+  insert_to_ready_queue(current);
+  schedule();
+  // panic( "You need to implement the yield syscall in lab3_2.\n" );
 
   return 0;
+}
+
+int sys_user_wait(int pid){
+  if(pid == -1){
+    int haschild = 0;
+    for(int i=0;i<NPROC;i++){
+      if(procs[i].parent == current && procs[i].status == ZOMBIE){
+        procs[i].status = FREE;
+        return i;
+      }
+      if(procs[i].parent == current){
+        haschild = 1;
+      }
+    }
+    if(!haschild)
+      return -1;
+    else
+      return -2; // continue wait
+  }
+  else{
+    if(pid >= 0 && pid <= NPROC){
+      if(procs[pid].parent==current){
+        if(procs[pid].status == ZOMBIE){
+          procs[pid].status = FREE;
+          return pid;
+        }
+        else{
+          return -2;
+        }
+      }
+      else{
+        return -1;
+      }
+    }
+    else{
+      return -1;
+    }
+  }
 }
 
 //
 // [a0]: the syscall number; [a1] ... [a7]: arguments to the syscalls.
 // returns the code of success, (e.g., 0 means success, fail for otherwise)
 //
+int do_sem_new(int value){
+  for(int i=0;i<NPROC;i++){
+    if(sems[i].used == 0){
+      sems[i].used = 1;
+      sems[i].value = value;
+      sems[i].wait_head = NULL;
+      sems[i].wait_tail = NULL;
+      return i;
+    }
+  }
+  return -1;
+}
+
+int do_sem_V(int sem){
+  sems[sem].value++;
+  if(sems[sem].wait_head != NULL){
+    process *cur = sems[sem].wait_head;
+    sems[sem].wait_head = sems[sem].wait_head->queue_next;
+    if(sems[sem].wait_head == NULL)
+      sems[sem].wait_tail = NULL;
+    cur ->status = READY;
+    insert_to_ready_queue(cur);
+  }
+  return 0;
+}
+
+int do_sem_p(int sem){
+  sems[sem].value--;
+  if(sems[sem].value < 0){
+    current -> status = BLOCKED;
+    if(sems[sem].wait_tail == NULL){
+      sems[sem].wait_head = sems[sem].wait_tail = current;
+      current ->queue_next = NULL;
+    }
+    else{
+      sems[sem].wait_tail->queue_next = current;
+      current ->queue_next = NULL;
+    }
+    schedule();
+  }
+  return 0;
+}
+
 long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, long a7) {
   switch (a0) {
     case SYS_user_print:
@@ -113,6 +197,14 @@ long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, l
       return sys_user_fork();
     case SYS_user_yield:
       return sys_user_yield();
+    case SYS_user_wait:
+      return sys_user_wait(a1);
+    case SYS_user_sem_new:
+      return do_sem_new(a1);
+    case SYS_user_sem_v:
+      return do_sem_V(a1);
+    case SYS_user_sem_p:
+      return do_sem_p(a1);
     default:
       panic("Unknown syscall %ld \n", a0);
   }

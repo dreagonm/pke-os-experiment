@@ -32,6 +32,8 @@ process procs[NPROC];
 // current points to the currently running user-mode application.
 process* current = NULL;
 
+semaphore sems[NPROC];
+
 //
 // switch to a user-mode process
 //
@@ -196,6 +198,7 @@ int do_fork( process* parent)
 
         // convert free_pages_address into a filter to skip reclaimed blocks in the heap
         // when mapping the heap blocks
+        __asm__("nop");
         int free_block_filter[MAX_HEAP_PAGES];
         memset(free_block_filter, 0, MAX_HEAP_PAGES);
         uint64 heap_bottom = parent->user_heap.heap_bottom;
@@ -231,13 +234,29 @@ int do_fork( process* parent)
         // address region of child to the physical pages that actually store the code
         // segment of parent process.
         // DO NOT COPY THE PHYSICAL PAGES, JUST MAP THEM.
-        panic( "You need to implement the code segment mapping of child in lab3_1.\n" );
-
+        // panic( "You need to implement the code segment mapping of child in lab3_1.\n" );
+        __asm__("nop");
+        uint64 pa = lookup_pa(parent->pagetable ,parent -> mapped_info[i].va);
+        map_pages(child->pagetable, parent->mapped_info[i].va, PGSIZE * parent->mapped_info[i].npages, pa,
+         prot_to_type(PROT_EXEC | PROT_READ, 1));
         // after mapping, register the vm region (do not delete codes below!)
         child->mapped_info[child->total_mapped_region].va = parent->mapped_info[i].va;
         child->mapped_info[child->total_mapped_region].npages =
           parent->mapped_info[i].npages;
         child->mapped_info[child->total_mapped_region].seg_type = CODE_SEGMENT;
+        child->total_mapped_region++;
+        break;
+      case DATA_SEGMENT: // 复制数据段
+        for(uint64 data_index = 0;data_index < current->mapped_info[i].npages;data_index++){
+          void* child_pa = alloc_page();
+          memcpy(child_pa, (void*)lookup_pa(parent->pagetable, current->mapped_info[i].va+data_index * PGSIZE), PGSIZE);
+          user_vm_map((pagetable_t)child->pagetable, current->mapped_info[i].va+data_index * PGSIZE, PGSIZE, (uint64)child_pa,
+                      prot_to_type(PROT_WRITE | PROT_READ, 1));
+        }
+        child->mapped_info[child->total_mapped_region].va = parent->mapped_info[i].va;
+        child->mapped_info[child->total_mapped_region].npages =
+          parent->mapped_info[i].npages;
+        child->mapped_info[child->total_mapped_region].seg_type = DATA_SEGMENT;
         child->total_mapped_region++;
         break;
     }

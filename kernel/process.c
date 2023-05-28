@@ -244,6 +244,19 @@ int do_fork( process* parent)
         child->mapped_info[child->total_mapped_region].seg_type = CODE_SEGMENT;
         child->total_mapped_region++;
         break;
+      case DATA_SEGMENT: // 复制数据段
+        for(uint64 data_index = 0;data_index < current->mapped_info[i].npages;data_index++){
+          void* child_pa = alloc_page();
+          memcpy(child_pa, (void*)lookup_pa(parent->pagetable, current->mapped_info[i].va+data_index * PGSIZE), PGSIZE);
+          user_vm_map((pagetable_t)child->pagetable, current->mapped_info[i].va+data_index * PGSIZE, PGSIZE, (uint64)child_pa,
+                      prot_to_type(PROT_WRITE | PROT_READ, 1));
+        }
+        child->mapped_info[child->total_mapped_region].va = parent->mapped_info[i].va;
+        child->mapped_info[child->total_mapped_region].npages =
+          parent->mapped_info[i].npages;
+        child->mapped_info[child->total_mapped_region].seg_type = DATA_SEGMENT;
+        child->total_mapped_region++;
+        break;
     }
   }
 

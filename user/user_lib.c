@@ -76,3 +76,13 @@ int fork() {
 void yield() {
   do_user_call(SYS_user_yield, 0, 0, 0, 0, 0, 0, 0);
 }
+
+#define CONTINUE_WAIT -2
+
+void wait(int pid){
+  while(1){
+    if(do_user_call(SYS_user_wait, pid, 0, 0, 0, 0, 0, 0) != CONTINUE_WAIT)
+      break;
+    yield();
+  }
+}

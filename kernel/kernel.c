@@ -36,6 +36,8 @@ void enable_paging() {
 // load_bincode_from_host_elf is defined in elf.c
 //
 void load_user_program(process *proc) {
+  proc ->mcb_start = (uint64)NULL;
+  proc ->mcb_tail = (uint64)NULL;
   sprint("User application is loading.\n");
   // allocate a page to store the trapframe. alloc_page is defined in kernel/pmm.c. added @lab2_1
   proc->trapframe = (trapframe *)alloc_page();

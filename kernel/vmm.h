@@ -3,6 +3,16 @@
 
 #include "riscv.h"
 
+#define PGROUNDUP(a)  (((sz)+PGSIZE-1) & ~(PGSIZE-1))
+#define PGROUNDDOWN(a) (((a)) & ~(PGSIZE-1))
+
+typedef struct mcb_t{
+  uint64 is_used;
+  uint64 size;
+  uint64 vaddr;
+  struct mcb_t *next;
+}mcb;
+
 /* --- utility functions for virtual address mapping --- */
 int map_pages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm);
 // permission codes.
